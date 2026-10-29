@@ -1,6 +1,8 @@
 package br.com.pdfcompactador
 
 import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
@@ -12,6 +14,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.setPadding
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.pdmodel.PDDocument
@@ -62,55 +66,70 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun buildScreen(): View {
-        val scroll = ScrollView(this)
+        val scroll = ScrollView(this).apply { isFillViewport = true; clipToPadding = false }
         val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20)); gravity = Gravity.CENTER_HORIZONTAL
+            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
         }
         scroll.addView(root)
-        root.addView(TextView(this).apply {
-            text = "Compactador de PDF"; textSize = 26f; setTextColor(Color.rgb(0, 92, 170))
-        })
-        root.addView(TextView(this).apply {
-            text = "Reduza PDFs escaneados mantendo o melhor resultado possível dentro do tamanho definido."; textSize = 15f
-            setPadding(0, dp(8), 0, dp(16))
-        })
-        root.addView(Button(this).apply { text = "SELECIONAR PDF"; setOnClickListener { openPdf.launch(arrayOf("application/pdf")) } }, wide())
-        fileNameLabel = TextView(this).apply { text = "Nenhum PDF selecionado"; textSize = 16f; setPadding(0, dp(12), 0, dp(4)) }
-        sizeLabel = TextView(this).apply { text = "Tamanho original: --" }
-        root.addView(fileNameLabel); root.addView(sizeLabel)
-        root.addView(divider())
+        ViewCompat.setOnApplyWindowInsetsListener(scroll) { _, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            root.setPadding(dp(20), bars.top + dp(18), dp(20), bars.bottom + dp(28))
+            insets
+        }
 
-        root.addView(label("Tamanho máximo desejado (MB)"))
+        root.addView(TextView(this).apply {
+            text = "Seu PDF, mais leve."; textSize = 29f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.rgb(27, 43, 91))
+        }, full())
+        root.addView(TextView(this).apply {
+            text = "Escolha o arquivo e defina o tamanho que precisa."; textSize = 16f; setTextColor(Color.rgb(95, 106, 135))
+        }, full(bottom = 18))
+
+        val fileCard = card()
+        fileCard.addView(TextView(this).apply { text = "1  •  Escolha o PDF"; textSize = 16f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.rgb(27, 43, 91)) })
+        fileCard.addView(TextView(this).apply { text = "O arquivo fica somente no seu aparelho."; textSize = 13f; setTextColor(Color.rgb(95, 106, 135)); setPadding(0, dp(4), 0, dp(12)) })
+        fileCard.addView(primaryButton("Selecionar PDF") { openPdf.launch(arrayOf("application/pdf")) }, full())
+        fileNameLabel = TextView(this).apply { text = "Nenhum PDF selecionado"; textSize = 15f; setTextColor(Color.rgb(49, 94, 251)); setPadding(0, dp(14), 0, dp(3)) }
+        sizeLabel = TextView(this).apply { text = "Tamanho original: --"; textSize = 14f; setTextColor(Color.rgb(95, 106, 135)) }
+        fileCard.addView(fileNameLabel); fileCard.addView(sizeLabel)
+        root.addView(fileCard, full(bottom = 14))
+
+        val settingsCard = card()
+        settingsCard.addView(TextView(this).apply { text = "2  •  Ajuste a compactação"; textSize = 16f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.rgb(27, 43, 91)) })
+        settingsCard.addView(TextView(this).apply { text = "Quanto menor o DPI, menor o arquivo."; textSize = 13f; setTextColor(Color.rgb(95, 106, 135)); setPadding(0, dp(4), 0, dp(8)) })
+        settingsCard.addView(label("Tamanho máximo desejado"))
         targetInput = edit("2.00", InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL)
-        root.addView(targetInput, wide())
-        root.addView(label("DPI inicial (quanto menor, menor o arquivo)"))
+        targetInput.hint = "Ex.: 2"; targetInput.setCompoundDrawablesWithIntrinsicBounds(0, 0, android.R.drawable.ic_menu_info_details, 0)
+        settingsCard.addView(targetInput, full())
+        settingsCard.addView(label("Qualidade inicial (DPI)"))
         dpiInput = edit("150", InputType.TYPE_CLASS_NUMBER)
-        root.addView(dpiInput, wide())
-        grayscale = CheckBox(this).apply { text = "Converter para tons de cinza" }
-        root.addView(grayscale)
-        root.addView(divider())
+        settingsCard.addView(dpiInput, full())
+        grayscale = CheckBox(this).apply { text = "Usar tons de cinza"; setTextColor(Color.rgb(52, 63, 91)); setPadding(0, dp(8), 0, 0) }
+        settingsCard.addView(grayscale)
+        root.addView(settingsCard, full(bottom = 14))
 
-        root.addView(label("PDF protegido por senha"))
+        val protectedCard = card()
+        val protectedToggle = CheckBox(this).apply { text = "Meu PDF tem senha"; textSize = 16f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.rgb(27, 43, 91)) }
+        protectedCard.addView(protectedToggle)
+        val passwordSection = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE }
+        passwordSection.addView(TextView(this).apply { text = "Informe a senha e escolha como o arquivo final será salvo."; textSize = 13f; setTextColor(Color.rgb(95, 106, 135)); setPadding(0, dp(3), 0, dp(6)) })
         passwordInput = edit("", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD).apply { hint = "Senha do PDF de entrada (se houver)" }
-        root.addView(passwordInput, wide())
+        passwordSection.addView(passwordInput, full())
         passwordChoice = RadioGroup(this).apply { orientation = RadioGroup.VERTICAL }
-        listOf("Remover senha do arquivo final", "Manter a mesma senha", "Usar outra senha").forEachIndexed { index, text ->
+        listOf("Remover senha no arquivo final", "Manter a mesma senha", "Usar outra senha").forEachIndexed { index, text ->
             passwordChoice.addView(RadioButton(this).apply { id = 100 + index; this.text = text; isChecked = index == 0 })
         }
-        root.addView(passwordChoice)
+        passwordSection.addView(passwordChoice)
         newPasswordInput = edit("", InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD).apply { hint = "Nova senha (somente para ‘Usar outra senha’)" }
-        root.addView(newPasswordInput, wide())
-        root.addView(TextView(this).apply {
-            text = "Se o resultado não atingir o tamanho pedido, o aplicativo testa automaticamente DPIs menores."; textSize = 13f
-            setPadding(0, dp(10), 0, dp(10))
-        })
-        root.addView(Button(this).apply {
-            text = "COMPACTAR E SALVAR"; setOnClickListener { requestOutput() }
-        }, wide())
+        passwordSection.addView(newPasswordInput, full())
+        protectedCard.addView(passwordSection)
+        protectedToggle.setOnCheckedChangeListener { _, checked -> passwordSection.visibility = if (checked) View.VISIBLE else View.GONE }
+        root.addView(protectedCard, full(bottom = 16))
+
+        root.addView(TextView(this).apply { text = "O app ajusta o DPI automaticamente caso o resultado não caiba no tamanho escolhido."; textSize = 13f; setTextColor(Color.rgb(95, 106, 135)); setPadding(dp(4), 0, dp(4), dp(10)) }, full())
+        root.addView(primaryButton("Compactar e salvar") { requestOutput() }, full())
         progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 100; visibility = View.GONE }
-        root.addView(progress, wide().apply { topMargin = dp(14) })
-        statusLabel = TextView(this).apply { text = ""; setPadding(0, dp(10), 0, dp(16)) }
+        root.addView(progress, full(top = 16))
+        statusLabel = TextView(this).apply { text = ""; textSize = 14f; setTextColor(Color.rgb(49, 94, 251)); setPadding(0, dp(10), 0, 0) }
         root.addView(statusLabel)
         return scroll
     }
@@ -236,9 +255,30 @@ class MainActivity : AppCompatActivity() {
                 .show()
         }
     }
-    private fun label(text: String) = TextView(this).apply { this.text = text; textSize = 15f; setPadding(0, dp(10), 0, dp(3)) }
+    private fun label(text: String) = TextView(this).apply { this.text = text; textSize = 14f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.rgb(52, 63, 91)); setPadding(0, dp(12), 0, dp(2)) }
     private fun edit(value: String, type: Int) = EditText(this).apply { setText(value); inputType = type }
     private fun wide() = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+    private fun full(top: Int = 0, bottom: Int = 0) = LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+    ).apply { topMargin = dp(top); bottomMargin = dp(bottom) }
+    private fun card() = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(16))
+        background = GradientDrawable().apply {
+            setColor(Color.WHITE); cornerRadius = dp(18).toFloat()
+            setStroke(dp(1), Color.rgb(228, 232, 244))
+        }
+        elevation = dp(2).toFloat()
+    }
+    private fun primaryButton(text: String, action: () -> Unit) = Button(this).apply {
+        this.text = text.uppercase(); textSize = 15f; typeface = Typeface.DEFAULT_BOLD
+        setTextColor(Color.WHITE)
+        background = GradientDrawable().apply {
+            setColor(Color.rgb(49, 94, 251)); cornerRadius = dp(14).toFloat()
+        }
+        setPadding(dp(12), dp(13), dp(12), dp(13))
+        setOnClickListener { action() }
+    }
     private fun divider() = Space(this).apply { layoutParams = LinearLayout.LayoutParams(1, dp(12)) }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).roundToInt()
     private fun formatSize(bytes: Long): String = if (bytes < MB) "${DecimalFormat("0.00").format(bytes / 1024.0)} KB" else "${DecimalFormat("0.00").format(bytes / MB)} MB"

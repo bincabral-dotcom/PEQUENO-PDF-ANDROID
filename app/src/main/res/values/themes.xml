@@ -1,6 +1,11 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.PdfCompactador" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Theme.PdfCompactador" parent="Theme.Material3.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
-        <item name="android:colorAccent">#006FC7</item>
+        <item name="android:windowBackground">#F5F7FC</item>
+        <item name="android:statusBarColor">#F5F7FC</item>
+        <item name="android:navigationBarColor">#F5F7FC</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:colorAccent">#315EFB</item>
     </style>
 </resources>
